@@ -1,0 +1,57 @@
+import { Component } from '@angular/core';
+import { FormControl, Validators } from '@angular/forms';
+import { CustomerService } from './customer.service';
+
+@Component({
+  selector: 'app-customers-edit',
+  template: `
+    <form (ngSubmit)="save()" [formGroup]="form">
+      <label>
+        Name:
+        <input type="text" formControlName="name">
+        <div *ngIf="form.get('name').hasError('uniqueName') && form.get('name').touched">
+          Name must be unique
+        </div>
+      </label>
+      <label>
+        Company Name:
+        <input type="text" formControlName="companyName" maxlength="50">
+      </label>
+      <label>
+        Phone:
+        <input type="text" formControlName="phone">
+      </label>
+      <label>
+        Email:
+        <input type="email" formControlName="email" pattern="^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$">
+      </label>
+      <button type="submit" [disabled]="form.invalid">Save</button>
+    </form>
+  `,
+  providers: [CustomerService]
+})
+export class CustomersEditComponent {
+  form = new FormGroup({
+        name: new FormControl('', [Validators.required], asyncValidator(this.customerService.checkUniqueName.bind(this.customerService))),
+    companyName: new FormControl('', [Validators.required, Validators.maxLength(50)]),
+    phone: new FormControl('', [Validators.required]),
+    email: new FormControl('', [Validators.required, Validators.pattern(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/)])
+  });
+
+  constructor(private customerService: CustomerService) {}
+
+  async save() {
+    if (this.form.valid) {
+      await this.customerService.saveCustomer(this.form.value);
+    }
+  }
+}
+
+function asyncValidator(checkFn: (name: string) => Promise<boolean>): AsyncValidatorFn {
+  return (control: AbstractControl): Promise<ValidationErrors | null> => {
+    return checkFn(control.value).then(isTaken => {
+      return isTaken ? { uniqueName: true } : null;
+    });
+  };
+}
+
